@@ -1,21 +1,25 @@
 from django.shortcuts import get_object_or_404
 from .models import Product
-from rest_framework import authentication, generics, mixins, permissions
+from rest_framework import generics, mixins
 from .serializers import ProductSerializer
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from .permissions import IsStaffEditorPermission
+from api.mixins import StaffEditorPermissionMixin
 
 
-class ProductListCreateAPIView(generics.ListCreateAPIView):
+
+
+class ProductListCreateAPIView(
+    StaffEditorPermissionMixin, 
+    generics.ListCreateAPIView):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
-    authentication_classes = [authentication.SessionAuthentication]
-    permission_classes = [permissions.IsAdminUser,IsStaffEditorPermission]
     
     
-    def perform_create(self, serializers):
+    def perform_create(self, serializer):
         # print(serializers.validated_data)
+        # email = serializer.validated_data.pop('email')
+        # print(email)
         title = serializer.validated_data.get('title')
         content = serializer.validated_data.get('content')
         
@@ -24,14 +28,18 @@ class ProductListCreateAPIView(generics.ListCreateAPIView):
         serializer.save(content=content)
     
 
-class ProductDetailAPIView(generics.RetrieveAPIView):
+class ProductDetailAPIView(
+    StaffEditorPermissionMixin, 
+    generics.RetrieveAPIView):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
     
     # lookup_field = "pk" 
     
     
-class ProductUpdateAPIView(generics.UpdateAPIView):
+class ProductUpdateAPIView(
+    StaffEditorPermissionMixin, 
+    generics.UpdateAPIView):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
     
@@ -45,10 +53,11 @@ class ProductUpdateAPIView(generics.UpdateAPIView):
             instance.content = content.title
             
 
-class ProductDestroyAPIView(generics.DestroyAPIView):
+class ProductDestroyAPIView(
+    StaffEditorPermissionMixin, 
+    generics.DestroyAPIView):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
-    
     lookup_field = "pk"
     
     
@@ -71,19 +80,20 @@ class ProductCreateAPIView(generics.CreateAPIView):
             content = title
         serializer.save(content=content)
 
-class ProductMixinView(mixins.CreateModelMixin,mixins.ListModelMixin,
-                       mixins.RetrieveModelMixin,generics.GenericAPIView):
+class ProductMixinView(
+    mixins.CreateModelMixin,
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    generics.GenericAPIView):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
     lookup_field = "pk"
     
     
-    
     def get(self, request, *args, **kwargs): # HTTP GET Method
         return self.list(request, *args, **kwargs)
         
-
-
+        
     def post(self, request, *args, **kwargs): # HTTP post Method
         return   self.create(request, *args,  **kwargs)
     
@@ -97,6 +107,7 @@ class ProductMixinView(mixins.CreateModelMixin,mixins.ListModelMixin,
             content = "This is a single view doing cool stuff"
         serializer.save(content=content)
     
+
 @api_view(["GET", "POST"])    
 def product_alt_view(request, pk=None, *args, **kwargs):
     method = request.method
@@ -125,9 +136,5 @@ def product_alt_view(request, pk=None, *args, **kwargs):
             return Response(serializer.data)
         return Response({"Invaild": "Not good data"}, status=400)
         
-
-    
-    
-    
 
     
