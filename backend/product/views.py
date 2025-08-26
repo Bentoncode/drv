@@ -1,14 +1,17 @@
 from django.shortcuts import get_object_or_404
 from .models import Product
-from rest_framework import generics, mixins
+from rest_framework import authentication, generics, mixins, permissions
 from .serializers import ProductSerializer
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
+from .permissions import IsStaffEditorPermission
 
 
 class ProductListCreateAPIView(generics.ListCreateAPIView):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
+    authentication_classes = [authentication.SessionAuthentication]
+    permission_classes = [permissions.IsAdminUser,IsStaffEditorPermission]
     
     
     def perform_create(self, serializers):
@@ -59,7 +62,7 @@ class ProductCreateAPIView(generics.CreateAPIView):
     serializer_class = ProductSerializer
     
     
-    def perform_create(self, serializers):
+    def perform_create(self, serializer):
         # print(serializers.validated_data)
         title = serializer.validated_data.get('title')
         content = serializer.validated_data.get('content')
@@ -68,15 +71,31 @@ class ProductCreateAPIView(generics.CreateAPIView):
             content = title
         serializer.save(content=content)
 
-class ProductMixinView(generics.GenericAPIView):
+class ProductMixinView(mixins.CreateModelMixin,mixins.ListModelMixin,
+                       mixins.RetrieveModelMixin,generics.GenericAPIView):
+    queryset = Product.objects.all()
+    serializer_class = ProductSerializer
+    lookup_field = "pk"
+    
+    
     
     def get(self, request, *args, **kwargs): # HTTP GET Method
-        return      
+        return self.list(request, *args, **kwargs)
+        
 
 
-    # def get(self, request, *args, **kwargs): # HTTP GET Method
-        return   
+    def post(self, request, *args, **kwargs): # HTTP post Method
+        return   self.create(request, *args,  **kwargs)
     
+    
+    def perform_create(self, serializer):
+        # print(serializers.validated_data)
+        title = serializer.validated_data.get('title')
+        content = serializer.validated_data.get('content')
+        
+        if content is None:
+            content = "This is a single view doing cool stuff"
+        serializer.save(content=content)
     
 @api_view(["GET", "POST"])    
 def product_alt_view(request, pk=None, *args, **kwargs):
